@@ -1,0 +1,83 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: discord2
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    ports:
+      - "8080:8080"
+    environment:
+      - APP_ENV=development
+      - DATABASE_HOST=postgres
+      - DATABASE_PORT=5432
+      - DATABASE_USER=postgres
+      - DATABASE_PASSWORD=postgres
+      - DATABASE_NAME=discord2
+      - DATABASE_SSLMODE=disable
+      - DATABASE_MAX_OPEN_CONNS=25
+      - DATABASE_MAX_IDLE_CONNS=5
+      - DATABASE_MAX_CONN_LIFETIME=5m
+      - JWT_SECRET=dev-secret-change-me-in-production
+      - JWT_ACCESS_TTL=15m
+      - JWT_REFRESH_TTL=168h
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+      - GOOGLE_REDIRECT_URL=http://localhost:8080/api/v1/auth/google/callback
+      - FRONTEND_URL=http://localhost:5173
+      - LIVEKIT_API_KEY=${LIVEKIT_API_KEY}
+      - LIVEKIT_API_SECRET=${LIVEKIT_API_SECRET}
+      - LIVEKIT_WS_URL=${LIVEKIT_WS_URL}
+      - LIVEKIT_API_URL=${LIVEKIT_API_URL}
+    volumes:
+      - ./backend:/app
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: air -c .air.toml
+
+  # frontend:
+  #   build:
+  #     context: ./frontend
+  #     dockerfile: Dockerfile.dev
+  #   ports:
+  #     - "5173:5173"
+  #   environment:
+  #     - VITE_API_URL=http://localhost:8080
+  #     - VITE_WS_URL=ws://localhost:8080
+  #     - VITE_LIVEKIT_URL=${LIVEKIT_WS_URL}
+  #   volumes:
+  #     - ./frontend:/app
+  #     - /app/node_modules
+  #   depends_on:
+  #     - backend
+  #   command: npm run dev:renderer
+
+  livekit:
+    image: livekit/livekit-server:latest
+    command: --bind 0.0.0.0 --keys ${LIVEKIT_API_KEY}:${LIVEKIT_API_SECRET}
+    ports:
+      - "7880:7880"       # signaling / websocket
+      - "7881:7881/tcp"   # TLS signaling
+      - "7882:7882/udp"   # media (UDP)
+    environment:
+      - LIVEKIT_WS_URL=ws://localhost:7880
+
+volumes:
+  postgres_data:

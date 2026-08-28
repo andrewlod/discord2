@@ -1,0 +1,185 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer components {
+  .btn {
+    @apply px-4 py-2 rounded-md font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 focus:ring-offset-bg-primary;
+  }
+  .btn-primary {
+    @apply btn bg-accent text-white hover:bg-accent-hover;
+  }
+  .btn-secondary {
+    @apply btn bg-bg-tertiary text-text-primary hover:bg-bg-secondary;
+  }
+  .btn-danger {
+    @apply btn bg-red text-white hover:bg-red/90;
+  }
+  .btn-ghost {
+    @apply btn bg-transparent hover:bg-bg-secondary;
+  }
+  .input {
+    @apply w-full px-4 py-2 bg-bg-tertiary border border-border rounded-md text-text-primary placeholder-text-secondary focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent transition-colors;
+  }
+  .card {
+    @apply bg-bg-secondary rounded-lg border border-border;
+  }
+}
+
+@layer utilities {
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: var(--bg-tertiary) transparent;
+  }
+
+  /* Background colors */
+  .bg-bg-primary { background-color: var(--bg-primary); }
+  .bg-bg-secondary { background-color: var(--bg-secondary); }
+  .bg-bg-tertiary { background-color: var(--bg-tertiary); }
+
+  /* Discord-specific backgrounds */
+  .bg-discord-bg { background-color: var(--bg-primary); }
+  .bg-discord-bg-secondary { background-color: var(--bg-secondary); }
+  .bg-discord-bg-tertiary { background-color: var(--bg-tertiary); }
+  .bg-discord-accent { background-color: var(--accent); }
+  .bg-discord-accent-hover { background-color: var(--accent-hover); }
+  .bg-discord-green { background-color: var(--green); }
+  .bg-discord-red { background-color: var(--red); }
+  .bg-discord-yellow { background-color: var(--yellow); }
+  .bg-discord-blurple { background-color: var(--blurple); }
+  .bg-discord-border { background-color: var(--border); }
+
+  /* Discord-specific backgrounds with opacity */
+  .bg-discord-red\/10 { background-color: var(--red); opacity: 0.1; }
+  .bg-discord-accent\/10 { background-color: var(--accent); opacity: 0.1; }
+
+  /* Text colors */
+  .text-text-primary { color: var(--text-primary); }
+  .text-text-secondary { color: var(--text-secondary); }
+  .text-text-link { color: var(--text-link); }
+  .text-text-muted { color: var(--text-secondary); }
+
+  .text-discord-text { color: var(--text-primary); }
+  .text-discord-text-muted { color: var(--text-secondary); }
+  .text-discord-text-link { color: var(--text-link); }
+  .text-discord-red { color: var(--red); }
+  .text-discord-green { color: var(--green); }
+  .text-discord-yellow { color: var(--yellow); }
+  .text-discord-accent { color: var(--accent); }
+
+  /* Border colors */
+  .border-border { border-color: var(--border); }
+  .border-discord-border { border-color: var(--border); }
+  .border-discord-red\/20 { border-color: var(--red); opacity: 0.2; }
+  .border-discord-red { border-color: var(--red); }
+  .border-discord-accent { border-color: var(--accent); }
+
+  /* Focus rings */
+  .focus\:ring-accent:focus { --tw-ring-color: var(--accent); }
+  .focus\:border-accent:focus { border-color: var(--accent); }
+  .focus\:ring-discord-accent:focus { --tw-ring-color: var(--accent); }
+  .focus\:border-discord-accent:focus { border-color: var(--accent); }
+
+  /* Hover states */
+  .hover\:bg-bg-secondary:hover { background-color: var(--bg-secondary); }
+  .hover\:bg-bg-tertiary:hover { background-color: var(--bg-tertiary); }
+  .hover\:bg-accent-hover:hover { background-color: var(--accent-hover); }
+  .hover\:bg-red\/90:hover { background-color: var(--red); opacity: 0.9; }
+  .hover\:text-text-primary:hover { color: var(--text-primary); }
+  .hover\:text-text-secondary:hover { color: var(--text-secondary); }
+
+  /* Transition */
+  .transition-colors { transition-property: color, background-color, border-color, text-decoration-color, fill, stroke; transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1); transition-duration: 150ms; }
+
+  /* Ring offset */
+  .focus\:ring-offset-bg-primary:focus { --tw-ring-offset-color: var(--bg-primary); }
+  .focus\:ring-offset-discord-bg:focus { --tw-ring-offset-color: var(--bg-primary); }
+}
+
+:root {
+  --bg-primary: #36393f;
+  --bg-secondary: #2f3136;
+  --bg-tertiary: #202225;
+  --text-primary: #dcddde;
+  --text-secondary: #72767d;
+  --text-link: #00b0f4;
+  --accent: #5865f2;
+  --accent-hover: #4752c4;
+  --green: #3ba55c;
+  --red: #ed4245;
+  --yellow: #faa61a;
+  --blurple: #5865f2;
+  --border: #202225;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  height: 100%;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'Inter', system-ui, sans-serif;
+  background-color: var(--bg-tertiary);
+  color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--bg-tertiary);
+  border-radius: 4px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-secondary);
+  background-clip: content-box;
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+.icon-button {
+  @apply p-2 rounded-lg text-text-secondary hover:text-text-primary hover:bg-bg-tertiary transition-colors;
+}
+
+.icon-button-active {
+  @apply text-text-primary bg-bg-tertiary;
+}
+
+.channel-item {
+  @apply px-2 py-1.5 rounded-md text-sm font-medium text-text-secondary hover:text-text-primary hover:bg-bg-tertiary transition-colors cursor-pointer;
+}
+
+.channel-item-active {
+  @apply text-text-primary bg-accent/10;
+}
+
+.server-icon {
+  @apply w-10 h-10 rounded-lg flex items-center justify-center text-white font-bold text-lg transition-transform hover:scale-105;
+}
+
+.tooltip {
+  @apply absolute z-50 px-2 py-1 text-xs bg-bg-tertiary text-text-primary rounded shadow-lg pointer-events-none opacity-0 transition-opacity;
+}
+
+.tooltip-visible {
+  @apply opacity-100;
+}
