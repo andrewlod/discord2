@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Track } from 'livekit-client';
 import { useLocalParticipant } from '@livekit/components-react';
 import { Mic, MicOff, Video, VideoOff, MonitorUp, PhoneOff } from 'lucide-react';
-import { ScreenSharePicker } from './ScreenSharePicker';
+import { ScreenSharePicker, ScreenShareChoice } from './ScreenSharePicker';
 
 interface CallToolbarProps {
   isViewer: boolean;
@@ -21,23 +21,30 @@ export const CallToolbar: React.FC<CallToolbarProps> = ({ isViewer, autoShare, o
     }
   }, [autoShare, isScreenShareEnabled]);
 
-  const startShare = async (source: { id: string; name: string } | null) => {
+  const startShare = async (choice: ScreenShareChoice | null) => {
     setPickerOpen(false);
     try {
-      let stream: MediaStream;
+      let track: MediaStreamTrack | undefined;
       const apiAny = (window as any).api;
-      if (source && source.id && apiAny?.screen) {
-        stream = await navigator.mediaDevices.getUserMedia({
+
+      if (choice?.track) {
+        track = choice.track;
+      } else if (choice?.id && apiAny?.screen) {
+        const stream = await navigator.mediaDevices.getUserMedia({
           video: {
-            mandatory: { chromeMediaSource: 'desktop', chromeMediaSourceId: source.id },
+            mandatory: { chromeMediaSource: 'desktop', chromeMediaSourceId: choice.id },
           } as any,
           audio: false,
         });
+        shareStreamRef.current = stream;
+        track = stream.getVideoTracks()[0];
       } else {
-        stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
+        const stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
+        shareStreamRef.current = stream;
+        track = stream.getVideoTracks()[0];
       }
-      shareStreamRef.current = stream;
-      const track = stream.getVideoTracks()[0];
+
+      if (!track) return;
       await localParticipant.publishTrack(track, { source: Track.Source.ScreenShare });
       track.onended = () => stopShare();
     } catch (e) {
@@ -49,6 +56,11 @@ export const CallToolbar: React.FC<CallToolbarProps> = ({ isViewer, autoShare, o
     const pub = localParticipant.getTrackPublication(Track.Source.ScreenShare);
     if (pub?.track) {
       await localParticipant.unpublishTrack(pub.track);
+      try {
+        (pub.track as any).stop?.();
+      } catch {
+        /* ignore */
+      }
     }
     shareStreamRef.current?.getTracks().forEach((t) => t.stop());
     shareStreamRef.current = null;

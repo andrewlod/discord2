@@ -135,14 +135,22 @@ ipcMain.handle('dialog:selectFiles', async (_event, filters: Electron.FileFilter
 ipcMain.handle('screen:getSources', async (_event, types?: ('window' | 'screen')[]) => {
   const sources = await desktopCapturer.getSources({
     types: types || ['window', 'screen'],
-    thumbnailSize: { width: 1920, height: 1080 },
+    thumbnailSize: { width: 320, height: 180 },
   });
-  return sources.map(source => ({
-    id: source.id,
-    name: source.name,
-    thumbnail: source.thumbnail.toDataURL(),
-    displayId: source.display_id,
-  }));
+  return sources.map(source => {
+    let thumbnail = '';
+    try {
+      thumbnail = source.thumbnail?.toDataURL() || '';
+    } catch {
+      thumbnail = '';
+    }
+    return {
+      id: source.id,
+      name: source.name,
+      thumbnail,
+      displayId: source.display_id,
+    };
+  });
 });
 
 ipcMain.handle('app:getVersion', () => app.getVersion());

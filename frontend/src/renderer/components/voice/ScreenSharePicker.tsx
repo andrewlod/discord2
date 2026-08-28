@@ -1,5 +1,11 @@
 import React, { useEffect, useState } from 'react';
 
+export interface ScreenShareChoice {
+  id?: string;
+  name: string;
+  track?: MediaStreamTrack;
+}
+
 interface DesktopSource {
   id: string;
   name: string;
@@ -8,25 +14,27 @@ interface DesktopSource {
 }
 
 interface ScreenSharePickerProps {
-  onPick: (source: { id: string; name: string } | null) => void;
+  onPick: (choice: ScreenShareChoice) => void;
   onCancel: () => void;
 }
 
 export const ScreenSharePicker: React.FC<ScreenSharePickerProps> = ({ onPick, onCancel }) => {
   const [sources, setSources] = useState<DesktopSource[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const hasApi = !!(window as any).api?.screen?.getSources;
 
   useEffect(() => {
     let cancelled = false;
     const load = async () => {
       try {
-        const apiAny = (window as any).api;
-        if (apiAny?.screen?.getSources) {
-          const srcs = await apiAny.screen.getSources(['screen', 'window']);
+        if (hasApi) {
+          const srcs = await (window as any).api.screen.getSources(['screen', 'window']);
           if (!cancelled) setSources(srcs as DesktopSource[]);
         }
-      } catch (e) {
-        console.error('[screen] failed to load sources', e);
+      } catch (e: any) {
+        if (!cancelled) setError(e?.message || 'Failed to list screen sources');
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -35,23 +43,27 @@ export const ScreenSharePicker: React.FC<ScreenSharePickerProps> = ({ onPick, on
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [hasApi]);
 
   const shareEntireScreen = async () => {
     try {
+      if (!navigator.mediaDevices?.getDisplayMedia) {
+        setError('Screen capture is not supported in this environment.');
+        return;
+      }
       const stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
       const track = stream.getVideoTracks()[0];
-      onPick({ id: (track as any).id || '', name: 'Entire Screen' });
-    } catch {
-      /* user cancelled */
+      onPick({ name: 'Entire Screen', track });
+    } catch (e: any) {
+      // User cancelling the picker is expected; only Surface real errors.
+      if (e?.name !== 'NotAllowedError' && e?.name !== 'AbortError') {
+        setError(e?.message || 'Screen capture failed');
+      }
     }
   };
 
   return (
-    <div
-      className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/70"
-      onClick={onCancel}
-    >
+    <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/70" onClick={onCancel}>
       <div
         className="bg-discord-bg-secondary rounded-lg border border-discord-border w-full max-w-2xl p-4"
         onClick={(e) => e.stopPropagation()}
@@ -65,9 +77,16 @@ export const ScreenSharePicker: React.FC<ScreenSharePickerProps> = ({ onPick, on
 
         {loading && <div className="text-discord-text-muted py-6 text-center">Loading sources…</div>}
 
-        {!loading && sources.length === 0 && (
+        {!loading && error && (
+          <div className="text-discord-red text-sm py-2">{error}</div>
+        )}
+
+        {!loading && !error && sources.length === 0 && (
           <div className="text-discord-text-muted py-6 text-center">
-            No desktop sources available.{' '}
+            No desktop sources were found.{' '}
+            {hasApi
+              ? 'Your system may not allow screen capture in this session (e.g. RDP/VM).'
+              : 'Running outside the desktop app — you can still share your whole screen below.'}{' '}
             <button className="text-discord-accent underline" onClick={shareEntireScreen}>
               Share entire screen
             </button>
@@ -90,6 +109,14 @@ export const ScreenSharePicker: React.FC<ScreenSharePickerProps> = ({ onPick, on
             </button>
           ))}
         </div>
+
+        {!loading && sources.length > 0 && (
+          <div className="mt-3 text-center">
+            <button className="text-discord-accent underline text-sm" onClick={shareEntireScreen}>
+              Or share entire screen
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
