@@ -46,19 +46,32 @@ export const ScreenSharePicker: React.FC<ScreenSharePickerProps> = ({ onPick, on
   }, [hasApi]);
 
   const shareEntireScreen = async () => {
+    setError(null);
+    setLoading(true);
     try {
+      if (hasApi) {
+        const screens = await (window as any).api.screen.getSources(['screen']);
+        const first = Array.isArray(screens) ? screens[0] : undefined;
+        if (first) {
+          onPick({ id: first.id, name: first.name });
+          return;
+        }
+      }
       if (!navigator.mediaDevices?.getDisplayMedia) {
         setError('Screen capture is not supported in this environment.');
         return;
       }
       const stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
       const track = stream.getVideoTracks()[0];
+      if (!track) throw new Error('No screen track captured');
       onPick({ name: 'Entire Screen', track });
     } catch (e: any) {
-      // User cancelling the picker is expected; only Surface real errors.
+      // User cancelling the picker is expected; only surface real errors.
       if (e?.name !== 'NotAllowedError' && e?.name !== 'AbortError') {
         setError(e?.message || 'Screen capture failed');
       }
+    } finally {
+      setLoading(false);
     }
   };
 
