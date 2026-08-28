@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, lazy, Suspense } from 'react';
 import { ws } from '@/services/websocket';
 import { WSOpCode } from '@/types';
 import { useCallStore } from '@/store';
@@ -6,8 +6,8 @@ import { api } from '@/services/api';
 import { normalizeCall, liveStreamFromWs } from '@/utils';
 import { IncomingCallModal } from './IncomingCallModal';
 import { OutgoingCallModal } from './OutgoingCallModal';
-import { CallRoom } from './CallRoom';
 import { GoLiveIndicator } from './GoLiveIndicator';
+const CallRoom = lazy(() => import('./CallRoom').then((m) => ({ default: m.CallRoom })));
 
 export const CallManager: React.FC = () => {
   const outgoingCall = useCallStore((s) => s.outgoingCall);
@@ -64,7 +64,11 @@ export const CallManager: React.FC = () => {
     <>
       {incomingCall && <IncomingCallModal incoming={incomingCall} />}
       {outgoingCall && <OutgoingCallModal outgoing={outgoingCall} />}
-      {activeCall && <CallRoom session={activeCall} onLeave={handleLeave} />}
+      {activeCall && (
+        <Suspense fallback={null}>
+          <CallRoom session={activeCall} onLeave={handleLeave} />
+        </Suspense>
+      )}
       <GoLiveIndicator />
     </>
   );

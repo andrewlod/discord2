@@ -1,10 +1,10 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, lazy, Suspense } from 'react';
 import { Channel } from '../../types';
 import { ws } from '../../services/websocket';
 import { api } from '../../services/api';
 import { useVoiceStore, useCallStore } from '../../store';
 import { useAuthStore } from '../../store';
-import { VoiceRoom } from './VoiceRoom';
+const VoiceRoom = lazy(() => import('./VoiceRoom').then((m) => ({ default: m.VoiceRoom })));
 import { normalizeCallResponse } from '../../utils';
 import './VoiceChannelView.css';
 
@@ -113,7 +113,11 @@ export const VoiceChannelView: React.FC<VoiceChannelViewProps> = ({ serverId, ch
   };
 
   if (inChannel && token && wsUrl) {
-    return <VoiceRoom token={token} url={wsUrl} onLeave={handleLeave} />;
+    return (
+      <Suspense fallback={null}>
+        <VoiceRoom token={token} url={wsUrl} onLeave={handleLeave} />
+      </Suspense>
+    );
   }
 
   return (
