@@ -1,8 +1,5 @@
 import { app, BrowserWindow, ipcMain, dialog, desktopCapturer, screen, Menu, Tray, nativeImage } from 'electron';
-import http from 'node:http';
-import { existsSync } from 'node:fs';
-import { readFile } from 'node:fs/promises';
-import { join, extname, normalize } from 'node:path';
+import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
@@ -13,62 +10,6 @@ const VITE_DEV_SERVER_URL = process.env.VITE_DEV_SERVER_URL || 'http://localhost
 let mainWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
 let isQuitting = false;
-
-const RENDERER_DIR = join(__dirname, '../renderer');
-const MIME_TYPES: Record<string, string> = {
-  '.html': 'text/html; charset=utf-8',
-  '.js': 'text/javascript; charset=utf-8',
-  '.mjs': 'text/javascript; charset=utf-8',
-  '.css': 'text/css; charset=utf-8',
-  '.json': 'application/json; charset=utf-8',
-  '.svg': 'image/svg+xml',
-  '.png': 'image/png',
-  '.jpg': 'image/jpeg',
-  '.jpeg': 'image/jpeg',
-  '.gif': 'image/gif',
-  '.ico': 'image/x-icon',
-  '.woff': 'font/woff',
-  '.woff2': 'font/woff2',
-  '.ttf': 'font/ttf',
-  '.map': 'application/json; charset=utf-8',
-};
-
-// Serve the built renderer over http://127.0.0.1 so ES modules load without
-// the file:// CORS restriction that blocks <script type="module"> from file://.
-function startRendererServer(): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const server = http.createServer(async (req, res) => {
-      try {
-        const urlPath = decodeURIComponent((req.url || '/').split('?')[0]);
-        let filePath = normalize(join(RENDERER_DIR, urlPath));
-        if (!filePath.startsWith(RENDERER_DIR)) {
-          res.statusCode = 403;
-          return res.end('Forbidden');
-        }
-        if (urlPath === '/' || urlPath === '') {
-          filePath = join(RENDERER_DIR, 'index.html');
-        }
-        if (!existsSync(filePath)) {
-          filePath = extname(filePath) === '' ? join(RENDERER_DIR, 'index.html') : filePath;
-        }
-        const data = await readFile(filePath);
-        const mime = MIME_TYPES[extname(filePath).toLowerCase()] || 'application/octet-stream';
-        res.setHeader('Content-Type', mime);
-        res.setHeader('Access-Control-Allow-Origin', '*');
-        res.end(data);
-      } catch {
-        res.statusCode = 404;
-        res.end('Not found');
-      }
-    });
-    server.on('error', reject);
-    server.listen(0, '127.0.0.1', () => {
-      const addr = server.address();
-      const port = typeof addr === 'object' && addr ? addr.port : 0;
-      resolve(`http://127.0.0.1:${port}`);
-    });
-  });
-}
 
 async function createWindow() {
   mainWindow = new BrowserWindow({
@@ -110,8 +51,7 @@ async function createWindow() {
       win.webContents.openDevTools();
     }
   } else {
-    const url = await startRendererServer();
-    mainWindow.loadURL(url);
+    mainWindow.loadFile(join(__dirname, '../renderer/index.html'));
   }
 
   mainWindow.once('ready-to-show', () => {
