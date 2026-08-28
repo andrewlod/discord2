@@ -52,6 +52,7 @@ async function createWindow() {
     }
   } else {
     mainWindow.loadFile(join(__dirname, '../renderer/index.html'));
+    mainWindow.webContents.openDevTools();
   }
 
   mainWindow.once('ready-to-show', () => {

@@ -65,11 +65,25 @@ func OptionalAuthMiddleware(authService *auth.Service) gin.HandlerFunc {
 }
 
 func CORSMiddleware(frontendURL string) gin.HandlerFunc {
+	allowedOrigins := map[string]bool{
+		frontendURL:             true,
+		"http://localhost:5173": true,
+		"http://127.0.0.1:5173": true,
+		"http://localhost:8080": true,
+		"http://127.0.0.1:8080": true,
+		"null":                  true, // file:// origin used by the packaged Electron app
+	}
 	return func(c *gin.Context) {
-		c.Writer.Header().Set("Access-Control-Allow-Origin", frontendURL)
+		origin := c.Request.Header.Get("Origin")
+		if origin != "" && allowedOrigins[origin] {
+			c.Writer.Header().Set("Access-Control-Allow-Origin", origin)
+		} else {
+			c.Writer.Header().Set("Access-Control-Allow-Origin", frontendURL)
+		}
 		c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
 		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, accept, origin, Cache-Control, X-Requested-With")
 		c.Writer.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS, GET, PUT, PATCH, DELETE")
+		c.Writer.Header().Set("Vary", "Origin")
 
 		if c.Request.Method == "OPTIONS" {
 			c.AbortWithStatus(204)
