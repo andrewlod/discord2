@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { Hash, Lock, Speaker, Folder, Plus, MoreHorizontal, Edit3, Trash2, Bell, Hash as HashIcon } from 'lucide-react';
+import { Hash, Lock, Speaker, Folder, Plus, MoreHorizontal, Edit3, Trash2, Bell, Hash as HashIcon, UserPlus } from 'lucide-react';
 import { useChannelStore, useServerStore } from '@/store';
 import { cn, getChannelIcon } from '@/utils';
 import ChannelItem from '@/components/channel/ChannelItem';
 import CreateChannelModal from '@/components/channel/CreateChannelModal';
+import InviteModal from '@/components/server/InviteModal';
 
 interface ChannelListProps {
   serverId: string;
@@ -16,7 +17,9 @@ interface ChannelListProps {
 
 export default function ChannelList({ serverId, channels, currentChannelId, onChannelSelect, mobileOpen, onMobileClose }: ChannelListProps) {
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showInviteModal, setShowInviteModal] = useState(false);
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
+  const server = useServerStore((s) => s.servers.find((sv) => sv.id === serverId));
 
   const categories = channels.filter(c => c.type === 2);
   const textChannels = channels.filter(c => c.type === 0 && !c.parent_id);
@@ -105,13 +108,23 @@ export default function ChannelList({ serverId, channels, currentChannelId, onCh
     <aside className="w-56 flex-shrink-0 bg-discord-bg-secondary border-r border-discord-border flex flex-col">
       <div className="flex items-center justify-between px-3 py-2 border-b border-discord-border">
         <span className="text-xs font-semibold text-discord-text-muted uppercase tracking-wider">Text Channels</span>
-        <button
-          className="p-1.5 rounded-lg hover:bg-discord-bg-tertiary transition-colors"
-          onClick={() => setShowCreateModal(true)}
-          aria-label="Create channel"
-        >
-          <Plus className="w-4 h-4 text-discord-text-muted" />
-        </button>
+        <div className="flex items-center gap-1">
+          <button
+            className="p-1.5 rounded-lg hover:bg-discord-bg-tertiary transition-colors"
+            onClick={() => setShowInviteModal(true)}
+            aria-label="Invite people"
+            title="Invite people"
+          >
+            <UserPlus className="w-4 h-4 text-discord-text-muted" />
+          </button>
+          <button
+            className="p-1.5 rounded-lg hover:bg-discord-bg-tertiary transition-colors"
+            onClick={() => setShowCreateModal(true)}
+            aria-label="Create channel"
+          >
+            <Plus className="w-4 h-4 text-discord-text-muted" />
+          </button>
+        </div>
       </div>
 
       <nav className="flex-1 overflow-y-auto px-2 py-2 space-y-4" role="navigation" aria-label="Channels">
@@ -179,6 +192,14 @@ export default function ChannelList({ serverId, channels, currentChannelId, onCh
 
       {showCreateModal && (
         <CreateChannelModal serverId={serverId} onClose={() => setShowCreateModal(false)} />
+      )}
+
+      {showInviteModal && (
+        <InviteModal
+          serverId={serverId}
+          serverName={server?.name || 'Server'}
+          onClose={() => setShowInviteModal(false)}
+        />
       )}
     </aside>
   );

@@ -26,12 +26,54 @@ export interface Server {
   icon_url?: string;
   banner_url?: string;
   owner_id: string;
+  is_public?: boolean;
   verification_level: number;
   default_notifications: number;
   created_at: string;
   updated_at: string;
   channels?: Channel[];
   members?: ServerMember[];
+}
+
+export interface PublicServer {
+  id: string;
+  name: string;
+  description?: string;
+  icon_url?: string;
+  banner_url?: string;
+  owner_id: string;
+  is_public: boolean;
+  member_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Invite {
+  code: string;
+  server_id: string;
+  channel_id?: string;
+  inviter_id: string;
+  max_uses: number;
+  max_age: number;
+  uses: number;
+  created_at: string;
+  expires_at?: string;
+  server?: Server;
+  inviter?: User;
+}
+
+export type FriendshipStatus = 'pending' | 'accepted';
+
+export interface FriendRelation {
+  user: User;
+  status: FriendshipStatus;
+  created_at: string;
+}
+
+export interface FriendsList {
+  friends: FriendRelation[];
+  incoming: FriendRelation[];
+  outgoing: FriendRelation[];
 }
 
 export interface ServerMember {

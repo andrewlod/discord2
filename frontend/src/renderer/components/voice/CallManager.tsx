@@ -50,8 +50,6 @@ export const CallManager: React.FC = () => {
     try {
       if (call.isLive && !call.isViewer) {
         await api.endLive(call.call.id);
-      } else {
-        await api.endCall(call.call.id);
       }
     } catch {
       /* ignore */

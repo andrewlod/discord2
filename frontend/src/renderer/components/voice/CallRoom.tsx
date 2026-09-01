@@ -4,8 +4,6 @@ import {
   RoomAudioRenderer,
   GridLayout,
   ParticipantTile,
-  ParticipantLoop,
-  useParticipants,
   useTracks,
 } from '@livekit/components-react';
 import { Track } from 'livekit-client';
@@ -49,20 +47,17 @@ export const CallRoom: React.FC<CallRoomProps> = ({ session, onLeave }) => {
 };
 
 function RoomBody({ isViewer, autoShare, onLeave }: { isViewer: boolean; autoShare: boolean; onLeave: () => void }) {
-  const participants = useParticipants();
   const tracks = useTracks([Track.Source.Camera, Track.Source.ScreenShare], { onlySubscribed: false });
 
   return (
     <>
       <RoomAudioRenderer />
       <div className="flex-1 overflow-auto p-4">
-        {participants.length === 0 ? (
+        {tracks.length === 0 ? (
           <div className="h-full flex items-center justify-center text-discord-text-muted">Connecting…</div>
         ) : (
           <GridLayout tracks={tracks}>
-            <ParticipantLoop participants={participants}>
-              <ParticipantTile />
-            </ParticipantLoop>
+            <ParticipantTile />
           </GridLayout>
         )}
       </div>

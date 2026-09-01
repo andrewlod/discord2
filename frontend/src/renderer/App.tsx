@@ -4,6 +4,7 @@ import { useAuthStore, useServerStore } from './store';
 import { api } from './services/api';
 import { ws } from './services/websocket';
 import Layout from './components/layout/AppShell';
+import TitleBar from './components/layout/TitleBar';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Home from './pages/Home';
@@ -49,33 +50,44 @@ function App() {
   }, []);
 
   useEffect(() => {
-    const { isAuthenticated, accessToken } = useAuthStore.getState();
-    if (isAuthenticated && accessToken) {
-      ws.connect(accessToken).catch(console.error);
-    }
+    const tryConnect = () => {
+      const { isAuthenticated, accessToken } = useAuthStore.getState();
+      if (isAuthenticated && accessToken) {
+        ws.connect(accessToken).catch(console.error);
+      }
+    };
+
+    tryConnect();
+    const unsubscribe = useAuthStore.subscribe(tryConnect);
 
     return () => {
+      unsubscribe();
       ws.disconnect();
     };
   }, []);
 
   return (
-    <Routes>
-      <Route path="/login" element={<Login />} />
-      <Route path="/register" element={<Register />} />
-      <Route path="/auth/callback" element={<Callback />} />
-      <Route
-        path="/*"
-        element={
-          <PrivateRoute>
-            <Layout />
-          </PrivateRoute>
-        }
-      >
-        <Route index element={<Home />} />
-        <Route path="settings" element={<Settings />} />
-      </Route>
-    </Routes>
+    <div className="h-screen flex flex-col overflow-hidden bg-discord-bg">
+      <TitleBar />
+      <div className="flex-1 min-h-0">
+        <Routes>
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+          <Route path="/auth/callback" element={<Callback />} />
+          <Route
+            path="/*"
+            element={
+              <PrivateRoute>
+                <Layout />
+              </PrivateRoute>
+            }
+          >
+            <Route index element={<Home />} />
+            <Route path="settings" element={<Settings />} />
+          </Route>
+        </Routes>
+      </div>
+    </div>
   );
 }
 

@@ -2,11 +2,9 @@ import React from 'react';
 import {
   LiveKitRoom,
   GridLayout,
-  ParticipantLoop,
   ParticipantTile,
   RoomAudioRenderer,
   ControlBar,
-  useParticipants,
   useTracks,
 } from '@livekit/components-react';
 import { Track } from 'livekit-client';
@@ -36,7 +34,6 @@ export const VoiceRoom: React.FC<VoiceRoomProps> = ({ token, url, onLeave }) => 
 };
 
 function RoomContent({ onLeave }: { onLeave: () => void }) {
-  const participants = useParticipants();
   const tracks = useTracks([Track.Source.Camera, Track.Source.ScreenShare], {
     onlySubscribed: false,
   });
@@ -46,9 +43,7 @@ function RoomContent({ onLeave }: { onLeave: () => void }) {
       <RoomAudioRenderer />
       <div className="voice-room-grid">
         <GridLayout tracks={tracks}>
-          <ParticipantLoop participants={participants}>
-            <ParticipantTile />
-          </ParticipantLoop>
+          <ParticipantTile />
         </GridLayout>
       </div>
       <div className="voice-room-controls">

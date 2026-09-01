@@ -18,7 +18,7 @@ export default function CreateServerModal({ onClose }: CreateServerModalProps) {
     if (!name.trim()) return;
 
     try {
-      await createServer(name.trim());
+      await createServer(name.trim(), undefined, !isPrivate);
       onClose();
     } catch (error) {
       console.error('Failed to create server:', error);
@@ -104,7 +104,7 @@ export default function CreateServerModal({ onClose }: CreateServerModalProps) {
                   className="w-4 h-4 rounded border-discord-border bg-discord-bg-tertiary text-discord-accent focus:ring-discord-accent"
                 />
                 <label htmlFor="is-private" className="text-sm text-discord-text">
-                  Private server (invite only)
+                  Make this server public (discoverable in Explore)
                 </label>
               </div>
 

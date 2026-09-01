@@ -2,6 +2,7 @@ package calls
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"strings"
 	"sync"
@@ -66,6 +67,15 @@ func contains(s []string, v string) bool {
 	return false
 }
 
+// sortedPair returns a stable, order-independent key for a 1:1 conversation so
+// that "call user B" and "call user A" resolve to the same room.
+func sortedPair(a, b string) string {
+	if a < b {
+		return a + "_" + b
+	}
+	return b + "_" + a
+}
+
 // Start creates a call (or live stream), issues a token for the initiator, and
 // notifies the other participants via the WS hub (ringing) or channel (Go Live).
 // It returns the created Call and the initiator's LiveKit token.
@@ -74,11 +84,44 @@ func (s *Service) Start(initiatorID, channelID, dmChannelID string, participants
 		return nil, "", ErrNotConfigured
 	}
 
-	id := uuid.New().String()
-	room := "call-" + id
-	if isLive {
-		room = "live-" + id
+	// Derive a stable room name per conversation so that everyone joining the
+	// same channel (or DM / 1:1 conversation) ends up in the SAME LiveKit room
+	// instead of each click spawning a separate, disconnected call.
+	scope := channelID
+	if scope == "" {
+		scope = dmChannelID
 	}
+	if scope == "" && len(participants) > 0 {
+		// 1:1 call with no shared channel: stable key from the two participants.
+		scope = "pair-" + sortedPair(initiatorID, participants[0])
+	}
+	base := "call-"
+	if isLive {
+		base = "live-"
+	}
+	room := base + scope
+
+	s.mu.Lock()
+	// Reuse an existing active call/live in the same room rather than spawning a
+	// second, disconnected session when another user joins the same channel.
+	for _, existing := range s.calls {
+		if existing.LivekitRoomName == room && existing.Status != "ended" {
+			if !contains(existing.ParticipantIDs, initiatorID) {
+				existing.ParticipantIDs = append(existing.ParticipantIDs, initiatorID)
+			}
+			name := s.lookupUsername(context.Background(), initiatorID)
+			token, err := livekit.CreateToken(s.lk, room, initiatorID, name, true, true)
+			if err != nil {
+				s.mu.Unlock()
+				return nil, "", err
+			}
+			s.mu.Unlock()
+			return existing, token, nil
+		}
+	}
+	s.mu.Unlock()
+
+	id := uuid.New().String()
 
 	participantSet := map[string]bool{initiatorID: true}
 	for _, p := range participants {
@@ -115,7 +158,8 @@ func (s *Service) Start(initiatorID, channelID, dmChannelID string, participants
 
 	s.recordStart(call, channelID, initiatorID, uniqueParticipants)
 
-	token, err := livekit.CreateToken(s.lk, room, initiatorID, initiatorID, true, true)
+	name := s.lookupUsername(context.Background(), initiatorID)
+	token, err := livekit.CreateToken(s.lk, room, initiatorID, name, true, true)
 	if err != nil {
 		return nil, "", err
 	}
@@ -171,7 +215,8 @@ func (s *Service) Accept(callID, userID string) (*Call, string, error) {
 		return nil, "", ErrCallNotFound
 	}
 
-	token, err := livekit.CreateToken(s.lk, call.LivekitRoomName, userID, userID, true, true)
+	name := s.lookupUsername(context.Background(), userID)
+	token, err := livekit.CreateToken(s.lk, call.LivekitRoomName, userID, name, true, true)
 	if err != nil {
 		return nil, "", err
 	}
@@ -244,7 +289,8 @@ func (s *Service) TokenFor(callID, userID string, canPublish bool) (string, erro
 	if !ok {
 		return "", ErrCallNotFound
 	}
-	return livekit.CreateToken(s.lk, call.LivekitRoomName, userID, userID, canPublish, true)
+	name := s.lookupUsername(context.Background(), userID)
+	return livekit.CreateToken(s.lk, call.LivekitRoomName, userID, name, canPublish, true)
 }
 
 // ListActive returns calls the given user is part of that have not ended.
@@ -336,6 +382,29 @@ func (s *Service) recordEnded(call *Call) {
 	if _, err := s.db.Pool.Exec(ctx, `UPDATE call_history SET ended_at = NOW() WHERE id = $1`, call.HistoryID); err != nil {
 		s.logger.Error("failed to update call history", zap.Error(err))
 	}
+}
+
+// lookupUsername returns the display_name (falling back to username) for the
+// given user ID. If the lookup fails it returns the raw ID so the UI always
+// has something to display.
+func (s *Service) lookupUsername(ctx context.Context, userID string) string {
+	if s.db == nil {
+		return userID
+	}
+	var displayName, username sql.NullString
+	err := s.db.Pool.QueryRow(ctx,
+		`SELECT display_name, username FROM users WHERE id = $1`, userID,
+	).Scan(&displayName, &username)
+	if err != nil {
+		return userID
+	}
+	if displayName.Valid && displayName.String != "" {
+		return displayName.String
+	}
+	if username.Valid {
+		return username.String
+	}
+	return userID
 }
 
 // ChannelMembers returns the user IDs of all members of the server that owns the

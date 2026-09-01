@@ -34,7 +34,7 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-discord-bg p-4">
+    <div className="h-full flex items-center justify-center bg-discord-bg p-4">
       <div className="w-full max-w-md bg-discord-bg-secondary rounded-lg border border-discord-border p-8">
         <div className="text-center mb-8">
           <h1 className="text-2xl font-bold">Welcome Back</h1>

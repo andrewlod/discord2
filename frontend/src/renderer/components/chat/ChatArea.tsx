@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { Send, Paperclip, Mic, Video, Smile, GripVertical, MoreHorizontal } from 'lucide-react';
-import { useMessageStore, useAuthStore } from '@/store';
-import { api } from '@/services/api';
+import { useMessageStore, useAuthStore, useChannelStore } from '@/store';
 import { ws } from '@/services/websocket';
+import type { Message } from '@/types';
 import MessageList from '@/components/chat/MessageList';
 import MessageInput from '@/components/chat/MessageInput';
 import TypingIndicator from '@/components/chat/TypingIndicator';
@@ -17,6 +17,8 @@ interface ChatAreaProps {
 export default function ChatArea({ serverId, channelId, server }: ChatAreaProps) {
   const { user } = useAuthStore();
   const { messages, fetchMessages, sendMessage, addMessage, loading, hasMore } = useMessageStore();
+  const channels = useChannelStore((s) => s.channels);
+  const channel = channels.find((c) => c.id === channelId);
   const [typingUsers, setTypingUsers] = useState<string[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -28,7 +30,7 @@ export default function ChatArea({ serverId, channelId, server }: ChatAreaProps)
 
     const unsubscribe = ws.onMessage((msg) => {
       if (msg.op === 1 && msg.d.channel_id === channelId) {
-        const message = msg.d.message;
+        const message = msg.d.message as Message;
         if (message.author_id !== user?.id) {
           addMessage(channelId, message);
         }
@@ -46,7 +48,14 @@ export default function ChatArea({ serverId, channelId, server }: ChatAreaProps)
   }, [channelId, fetchMessages, addMessage, user?.id]);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    const container = containerRef.current;
+    if (!container) return;
+    const threshold = 120;
+    const distanceFromBottom =
+      container.scrollHeight - container.scrollTop - container.clientHeight;
+    if (distanceFromBottom <= threshold) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
   }, [channelMessages]);
 
   const handleSend = (content: string) => {
@@ -65,7 +74,7 @@ export default function ChatArea({ serverId, channelId, server }: ChatAreaProps)
       <div className="flex items-center gap-3 px-4 py-2 border-b border-discord-border bg-discord-bg-secondary">
         <div className="flex items-center gap-2">
           <span className="text-discord-accent font-medium">#</span>
-          <span className="font-medium truncate">{channelId}</span>
+          <span className="font-medium truncate">{channel?.name ?? channelId}</span>
         </div>
         <div className="flex-1" />
         <div className="flex items-center gap-1">

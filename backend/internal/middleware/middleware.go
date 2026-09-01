@@ -65,21 +65,16 @@ func OptionalAuthMiddleware(authService *auth.Service) gin.HandlerFunc {
 }
 
 func CORSMiddleware(frontendURL string) gin.HandlerFunc {
-	allowedOrigins := map[string]bool{
-		frontendURL:             true,
-		"http://localhost:5173": true,
-		"http://127.0.0.1:5173": true,
-		"http://localhost:8080": true,
-		"http://127.0.0.1:8080": true,
-		"null":                  true, // file:// origin used by the packaged Electron app
-	}
 	return func(c *gin.Context) {
+		// Reflect the caller's Origin exactly. With `Access-Control-Allow-Credentials: true`
+		// the browser requires an exact Origin match, so we can't hard-code one value.
+		// A file:// (packaged Electron) page sends `Origin: null`; other local dev
+		// origins (http://localhost:5173, etc.) are reflected as-is.
 		origin := c.Request.Header.Get("Origin")
-		if origin != "" && allowedOrigins[origin] {
-			c.Writer.Header().Set("Access-Control-Allow-Origin", origin)
-		} else {
-			c.Writer.Header().Set("Access-Control-Allow-Origin", frontendURL)
+		if origin == "" {
+			origin = "null"
 		}
+		c.Writer.Header().Set("Access-Control-Allow-Origin", origin)
 		c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
 		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, accept, origin, Cache-Control, X-Requested-With")
 		c.Writer.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS, GET, PUT, PATCH, DELETE")

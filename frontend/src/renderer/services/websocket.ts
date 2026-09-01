@@ -15,6 +15,9 @@ class WebSocketService {
   private messageQueue: WSMessage[] = [];
   private handlers: Set<MessageHandler> = new Set();
   private connecting = false;
+  private currentChannelId: string | null = null;
+  private currentServerId: string | null = null;
+  private currentDMId: string | null = null;
 
   connect(token: string): Promise<void> {
     this.token = token;
@@ -48,6 +51,7 @@ class WebSocketService {
           this.startHeartbeat();
           this.flushQueue();
           this.send(WSOpCode.IDENTIFY, { token });
+          this.resubscribe();
           resolve();
         };
 
@@ -145,6 +149,18 @@ class WebSocketService {
     }
   }
 
+  private resubscribe() {
+    if (this.currentChannelId) {
+      this.send(WSOpCode.CHANNEL_SELECT, {
+        channel_id: this.currentChannelId,
+        server_id: this.currentServerId ?? '',
+      });
+    }
+    if (this.currentDMId) {
+      this.send(WSOpCode.DM_SELECT, { dm_channel_id: this.currentDMId });
+    }
+  }
+
   private scheduleReconnect() {
     if (this.reconnectAttempts >= this.maxReconnectAttempts) {
       console.error('[WS] Max reconnect attempts reached');
@@ -183,10 +199,16 @@ class WebSocketService {
   }
 
   selectChannel(channelId: string, serverId: string) {
+    this.currentChannelId = channelId;
+    this.currentServerId = serverId;
+    this.currentDMId = null;
     this.send(WSOpCode.CHANNEL_SELECT, { channel_id: channelId, server_id: serverId });
   }
 
   selectDM(dmChannelId: string) {
+    this.currentDMId = dmChannelId;
+    this.currentChannelId = null;
+    this.currentServerId = null;
     this.send(WSOpCode.DM_SELECT, { dm_channel_id: dmChannelId });
   }
 

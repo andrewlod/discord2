@@ -18,11 +18,6 @@ async function createWindow() {
     minWidth: 800,
     minHeight: 600,
     titleBarStyle: 'hidden',
-    titleBarOverlay: {
-      color: '#202225',
-      symbolColor: '#dcddde',
-      height: 32,
-    },
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       contextIsolation: true,

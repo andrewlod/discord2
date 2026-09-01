@@ -1,8 +1,15 @@
 import React, { useState } from 'react';
 import { Radio } from 'lucide-react';
-import { useCallStore } from '../../store';
+import { useCallStore, useUserDisplay } from '../../store';
 import { api } from '../../services/api';
 import type { Call } from '../../types';
+
+function StreamLabel({ initiatorId }: { initiatorId: string }) {
+  const displayName = useUserDisplay(initiatorId);
+  return (
+    <p className="text-discord-text-muted text-xs truncate max-w-[160px]">{displayName}</p>
+  );
+}
 
 export const GoLiveIndicator: React.FC = () => {
   const { liveStreams, removeLiveStream, setActiveCall } = useCallStore();
@@ -53,7 +60,7 @@ export const GoLiveIndicator: React.FC = () => {
           </span>
           <div className="flex-1">
             <p className="text-discord-text text-sm font-medium">Live now</p>
-            <p className="text-discord-text-muted text-xs truncate max-w-[160px]">{s.initiatorId}</p>
+            <StreamLabel initiatorId={s.initiatorId} />
           </div>
           <button
             className="flex items-center gap-1 bg-discord-red text-white text-sm px-2 py-1 rounded hover:bg-red-600 disabled:opacity-50"

@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState, lazy, Suspense } from 'react';
 import { Channel } from '../../types';
 import { ws } from '../../services/websocket';
 import { api } from '../../services/api';
-import { useVoiceStore, useCallStore } from '../../store';
+import { useVoiceStore, useCallStore, useUserDisplay } from '../../store';
 import { useAuthStore } from '../../store';
 const VoiceRoom = lazy(() => import('./VoiceRoom').then((m) => ({ default: m.VoiceRoom })));
 import { normalizeCallResponse } from '../../utils';
@@ -19,6 +19,32 @@ interface Participant {
   self_deaf: boolean;
   self_video: boolean;
   self_stream: boolean;
+}
+
+function VoiceParticipant({ p, isCurrentUser }: { p: Participant; isCurrentUser: boolean }) {
+  const displayName = useUserDisplay(p.user_id);
+  return (
+    <div className="voice-participant">
+      <div className="voice-participant-avatar">
+        {p.self_video || p.self_stream ? (
+          <div className="voice-video-placeholder">VIDEO</div>
+        ) : (
+          <div className="voice-avatar-circle">
+            {displayName.slice(0, 2).toUpperCase()}
+          </div>
+        )}
+      </div>
+      <div className="voice-participant-info">
+        <span className="voice-participant-name">
+          {isCurrentUser ? 'You' : displayName}
+        </span>
+        <span className="voice-participant-status">
+          {p.self_mute ? 'Muted' : 'Speaking'}
+          {p.self_stream ? ' • Streaming' : ''}
+        </span>
+      </div>
+    </div>
+  );
 }
 
 export const VoiceChannelView: React.FC<VoiceChannelViewProps> = ({ serverId, channel }) => {
@@ -112,7 +138,7 @@ export const VoiceChannelView: React.FC<VoiceChannelViewProps> = ({ serverId, ch
     }
   };
 
-  if (inChannel && token && wsUrl) {
+  if (inChannel && token && wsUrl && !activeCall) {
     return (
       <Suspense fallback={null}>
         <VoiceRoom token={token} url={wsUrl} onLeave={handleLeave} />
@@ -137,26 +163,7 @@ export const VoiceChannelView: React.FC<VoiceChannelViewProps> = ({ serverId, ch
         ) : (
           <div className="voice-participants">
             {participants.map((p) => (
-              <div key={p.user_id} className="voice-participant">
-                <div className="voice-participant-avatar">
-                  {p.self_video || p.self_stream ? (
-                    <div className="voice-video-placeholder">VIDEO</div>
-                  ) : (
-                    <div className="voice-avatar-circle">
-                      {p.user_id.slice(0, 2).toUpperCase()}
-                    </div>
-                  )}
-                </div>
-                <div className="voice-participant-info">
-                  <span className="voice-participant-name">
-                    {p.user_id === currentUser?.id ? 'You' : p.user_id.slice(0, 8)}
-                  </span>
-                  <span className="voice-participant-status">
-                    {p.self_mute ? 'Muted' : 'Speaking'}
-                    {p.self_stream ? ' • Streaming' : ''}
-                  </span>
-                </div>
-              </div>
+              <VoiceParticipant key={p.user_id} p={p} isCurrentUser={p.user_id === currentUser?.id} />
             ))}
           </div>
         )}

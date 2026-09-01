@@ -1,9 +1,11 @@
 import { useState } from 'react';
-import { Plus, X, LogOut, Settings, User, Search, Bell, HelpCircle, ChevronDown, ChevronUp, MessageSquare } from 'lucide-react';
+import { Plus, X, LogOut, Settings, User, Search, Bell, HelpCircle, ChevronDown, ChevronUp, MessageSquare, UserPlus } from 'lucide-react';
 import { useServerStore, useAuthStore, useUISettingsStore } from '@/store';
 import { cn, getInitials, getColorFromString } from '@/utils';
 import ServerIcon from '@/components/server/ServerIcon';
 import CreateServerModal from '@/components/server/CreateServerModal';
+import ExplorePublicServers from '@/components/server/ExplorePublicServers';
+import FriendsPanel from '@/components/server/FriendsPanel';
 
 interface SidebarProps {
   servers: Array<{ id: string; name: string; icon_url?: string }>;
@@ -19,6 +21,8 @@ interface SidebarProps {
 
 export default function Sidebar({ servers, currentServerId, onServerSelect, dmMode, onToggleDM, collapsed, mobileOpen, onMobileClose, user }: SidebarProps) {
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showExploreModal, setShowExploreModal] = useState(false);
+  const [showFriendsModal, setShowFriendsModal] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const { toggleSidebar } = useUISettingsStore();
   const { logout } = useAuthStore();
@@ -75,6 +79,12 @@ export default function Sidebar({ servers, currentServerId, onServerSelect, dmMo
             <Plus className="w-5 h-5 text-discord-text-muted" />
           </button>
         </div>
+        {showExploreModal && (
+          <ExplorePublicServers onClose={() => setShowExploreModal(false)} onAddFriend={() => { setShowExploreModal(false); setShowFriendsModal(true); }} />
+        )}
+        {showFriendsModal && (
+          <FriendsPanel onClose={() => setShowFriendsModal(false)} />
+        )}
         {showCreateModal && (
           <CreateServerModal onClose={() => setShowCreateModal(false)} />
         )}
@@ -182,10 +192,17 @@ export default function Sidebar({ servers, currentServerId, onServerSelect, dmMo
             </button>
             <button
               className={cn('w-full rounded-lg flex items-center gap-3 px-2 py-1.5 transition-colors', 'text-discord-text-muted hover:text-discord-text hover:bg-discord-bg-secondary')}
-              onClick={() => { setShowCreateModal(true); onMobileClose(); }}
+              onClick={() => { setShowExploreModal(true); onMobileClose(); }}
             >
               <Search className="w-5 h-5" />
               <span className="font-medium text-sm">Explore Public Servers</span>
+            </button>
+            <button
+              className={cn('w-full rounded-lg flex items-center gap-3 px-2 py-1.5 transition-colors', 'text-discord-text-muted hover:text-discord-text hover:bg-discord-bg-secondary')}
+              onClick={() => { setShowFriendsModal(true); onMobileClose(); }}
+            >
+              <UserPlus className="w-5 h-5" />
+              <span className="font-medium text-sm">Friends</span>
             </button>
           </div>
         )}
@@ -249,6 +266,17 @@ export default function Sidebar({ servers, currentServerId, onServerSelect, dmMo
 
       {showCreateModal && (
         <CreateServerModal onClose={() => setShowCreateModal(false)} />
+      )}
+
+      {showExploreModal && (
+        <ExplorePublicServers
+          onClose={() => setShowExploreModal(false)}
+          onAddFriend={() => { setShowExploreModal(false); setShowFriendsModal(true); }}
+        />
+      )}
+
+      {showFriendsModal && (
+        <FriendsPanel onClose={() => setShowFriendsModal(false)} />
       )}
     </>
   );

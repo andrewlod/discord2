@@ -1,5 +1,5 @@
 import axios, { AxiosInstance, AxiosError, InternalAxiosRequestConfig } from 'axios';
-import type { TokenPair, User, Server, Channel, Message, DMChannel, LiveKitTokenResponse, CallStartResponse, CallAcceptResponse, TokenResponse } from '../types';
+import type { TokenPair, User, Server, PublicServer, Invite, FriendsList, Channel, Message, DMChannel, LiveKitTokenResponse, CallStartResponse, CallAcceptResponse, TokenResponse } from '../types';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
 const WS_URL = import.meta.env.VITE_WS_URL || 'ws://localhost:8080';
@@ -156,6 +156,11 @@ class ApiService {
     return `${API_URL}/api/v1/auth/google`;
   }
 
+  async getUser(id: string): Promise<User> {
+    const response = await this.client.get(`/users/${id}`);
+    return response.data;
+  }
+
   async searchUsers(query: string): Promise<User[]> {
     const response = await this.client.get('/users/search', { params: { q: query } });
     return response.data;
@@ -166,8 +171,43 @@ class ApiService {
     return response.data;
   }
 
-  async createServer(name: string, description?: string): Promise<{ id: string }> {
-    const response = await this.client.post('/servers', { name, description });
+  async createServer(name: string, description?: string, isPublic = false): Promise<{ id: string }> {
+    const response = await this.client.post('/servers', { name, description, is_public: isPublic });
+    return response.data;
+  }
+
+  async updateServer(id: string, data: Partial<{ name: string; description: string; icon_url: string; banner_url: string; is_public: boolean }>): Promise<Server> {
+    const response = await this.client.patch(`/servers/${id}`, data);
+    return response.data;
+  }
+
+  async exploreServers(): Promise<PublicServer[]> {
+    const response = await this.client.get('/servers/explore');
+    return response.data;
+  }
+
+  async createInvite(serverId: string, data: { max_uses?: number; max_age?: number; channel_id?: string } = {}): Promise<{ code: string }> {
+    const response = await this.client.post(`/servers/${serverId}/invites`, data);
+    return response.data;
+  }
+
+  async listInvites(serverId: string): Promise<Invite[]> {
+    const response = await this.client.get(`/servers/${serverId}/invites`);
+    return response.data;
+  }
+
+  async getInvite(code: string): Promise<Invite> {
+    const response = await this.client.get(`/invites/${encodeURIComponent(code)}`);
+    return response.data;
+  }
+
+  async joinInvite(code: string): Promise<{ server: Server }> {
+    const response = await this.client.post(`/invites/${encodeURIComponent(code)}/join`);
+    return response.data;
+  }
+
+  async joinServer(serverId: string): Promise<{ server: Server }> {
+    const response = await this.client.post(`/servers/${serverId}/join`);
     return response.data;
   }
 
@@ -214,6 +254,31 @@ class ApiService {
     if (before) params.append('before', before);
     params.append('limit', limit.toString());
     const response = await this.client.get(`/dms/${dmId}/messages?${params}`);
+    return response.data;
+  }
+
+  async getFriends(): Promise<FriendsList> {
+    const response = await this.client.get('/friends');
+    return response.data;
+  }
+
+  async sendFriendRequest(target: { user_id?: string; username?: string }): Promise<{ status: string }> {
+    const response = await this.client.post('/friends/request', target);
+    return response.data;
+  }
+
+  async acceptFriendRequest(userId: string): Promise<{ status: string }> {
+    const response = await this.client.post(`/friends/${userId}/accept`);
+    return response.data;
+  }
+
+  async declineFriendRequest(userId: string): Promise<{ status: string }> {
+    const response = await this.client.post(`/friends/${userId}/decline`);
+    return response.data;
+  }
+
+  async removeFriend(userId: string): Promise<{ status: string }> {
+    const response = await this.client.delete(`/friends/${userId}`);
     return response.data;
   }
 

@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { User, TokenPair, Server, Channel, Message, DMChannel, Call, VoiceState, VideoQuality, CallSession, LiveStream } from '../types';
+import { useEffect, useState } from 'react';
+import type { User, TokenPair, Server, Channel, Message, DMChannel, Call, VoiceState, VideoQuality, CallSession, LiveStream, FriendRelation } from '../types';
 import { api } from '../services/api';
 
 interface AuthState {
@@ -76,7 +77,7 @@ interface ServerState {
   currentServerId: string | null;
   currentChannelId: string | null;
   fetchServers: () => Promise<void>;
-  createServer: (name: string, description?: string) => Promise<Server>;
+  createServer: (name: string, description?: string, isPublic?: boolean) => Promise<Server>;
   selectServer: (serverId: string | null) => void;
   selectChannel: (channelId: string | null) => void;
   addServer: (server: Server) => void;
@@ -94,8 +95,8 @@ export const useServerStore = create<ServerState>((set, get) => ({
     set({ servers });
   },
 
-  createServer: async (name: string, description?: string) => {
-    const { id } = await api.createServer(name, description);
+  createServer: async (name: string, description?: string, isPublic?: boolean) => {
+    const { id } = await api.createServer(name, description, isPublic);
     const server = await api.getServer(id);
     set((state) => ({ servers: [server, ...state.servers] }));
     return server;
@@ -186,7 +187,7 @@ export const useMessageStore = create<MessageState>((set, get) => ({
       set((state) => {
         const newMessages = new Map(state.messages);
         const existing = newMessages.get(channelId) || [];
-        const combined = before ? [...existing, ...messages] : [...messages, ...existing];
+        const combined = before ? [...existing, ...messages] : messages;
         newMessages.set(channelId, combined);
         return { messages: newMessages, hasMore: new Map(state.hasMore).set(channelId, messages.length >= 50) };
       });
@@ -240,7 +241,7 @@ export const useMessageStore = create<MessageState>((set, get) => ({
     const newMessages = new Map(state.messages);
     const existing = newMessages.get(channelId) || [];
     if (!existing.find(m => m.id === message.id)) {
-      newMessages.set(channelId, [message, ...existing]);
+      newMessages.set(channelId, [...existing, message]);
     }
     return { messages: newMessages };
   }),
@@ -397,6 +398,48 @@ export const useVoiceStore = create<VoiceStore>((set) => ({
   }),
 }));
 
+interface FriendState {
+  friends: FriendRelation[];
+  incoming: FriendRelation[];
+  outgoing: FriendRelation[];
+  fetchFriends: () => Promise<void>;
+  sendRequest: (target: { user_id?: string; username?: string }) => Promise<void>;
+  acceptRequest: (userId: string) => Promise<void>;
+  declineRequest: (userId: string) => Promise<void>;
+  removeFriend: (userId: string) => Promise<void>;
+}
+
+export const useFriendStore = create<FriendState>((set, get) => ({
+  friends: [],
+  incoming: [],
+  outgoing: [],
+
+  fetchFriends: async () => {
+    const data = await api.getFriends();
+    set({ friends: data.friends, incoming: data.incoming, outgoing: data.outgoing });
+  },
+
+  sendRequest: async (target) => {
+    await api.sendFriendRequest(target);
+    await get().fetchFriends();
+  },
+
+  acceptRequest: async (userId) => {
+    await api.acceptFriendRequest(userId);
+    await get().fetchFriends();
+  },
+
+  declineRequest: async (userId) => {
+    await api.declineFriendRequest(userId);
+    await get().fetchFriends();
+  },
+
+  removeFriend: async (userId) => {
+    await api.removeFriend(userId);
+    await get().fetchFriends();
+  },
+}));
+
 interface UISettingsState {
   sidebarCollapsed: boolean;
   compactMode: boolean;
@@ -426,3 +469,63 @@ export const useUISettingsStore = create<UISettingsState>()(
     }
   )
 );
+
+interface UserCacheState {
+  users: Map<string, User>;
+  fetchUser: (id: string) => Promise<User | null>;
+  getUser: (id: string) => User | undefined;
+}
+
+export const useUserCacheStore = create<UserCacheState>((set, get) => ({
+  users: new Map(),
+
+  fetchUser: async (id: string) => {
+    const cached = get().users.get(id);
+    if (cached) return cached;
+    try {
+      const user = await api.getUser(id);
+      set((state) => {
+        const newUsers = new Map(state.users);
+        newUsers.set(id, user);
+        return { users: newUsers };
+      });
+      return user;
+    } catch {
+      return null;
+    }
+  },
+
+  getUser: (id: string) => get().users.get(id),
+}));
+
+export function useUserDisplay(userId: string | undefined): string {
+  const [displayName, setDisplayName] = useState(userId?.slice(0, 8) ?? '');
+  const currentUser = useAuthStore((s) => s.user);
+
+  useEffect(() => {
+    if (!userId) {
+      setDisplayName('');
+      return;
+    }
+    if (currentUser?.id === userId) {
+      setDisplayName(currentUser.display_name || currentUser.username);
+      return;
+    }
+
+    const cached = useUserCacheStore.getState().getUser(userId);
+    if (cached) {
+      setDisplayName(cached.display_name || cached.username);
+      return;
+    }
+
+    let cancelled = false;
+    useUserCacheStore.getState().fetchUser(userId).then((user) => {
+      if (!cancelled && user) {
+        setDisplayName(user.display_name || user.username);
+      }
+    });
+    return () => { cancelled = true; };
+  }, [userId, currentUser]);
+
+  return displayName;
+}
